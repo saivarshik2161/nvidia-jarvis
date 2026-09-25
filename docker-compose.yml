@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - NVIDIA_API_BASE_URL=${NVIDIA_API_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - NVIDIA_MODEL=${NVIDIA_MODEL:-nvidia/nemotron-3.5-lightning-30b-a3b}
+      - JARVIS_CLIENT_TOKEN=${JARVIS_CLIENT_TOKEN}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./jarvis.db}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend:/app
+      - jarvis_db:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=jarvis
+      - POSTGRES_USER=jarvis
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-jarvis_dev_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    profiles:
+      - postgres
+
+volumes:
+  jarvis_db:
+  postgres_data:
